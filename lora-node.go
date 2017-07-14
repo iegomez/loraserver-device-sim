@@ -1,0 +1,256 @@
+package main
+
+import (
+    "fmt"
+    "github.com/brocaar/lorawan"
+    "encoding/json"
+    "time"
+    "encoding/hex"
+    "math/rand"
+    MQTT "github.com/eclipse/paho.mqtt.golang"
+)
+
+type Message struct{
+    PhyPayload  string      `json:"phyPayload"`
+    RxInfo      *RxInfo     `json:"rxInfo"`
+}
+
+type RxInfo struct{
+    Channel     int         `json:"channel"`
+    CodeRate    string      `json:"codeRate"`
+    CrcStatus   int         `json:"crcStatus"`
+    DataRate    *DataRate   `json:"dataRate"`
+    Frequency   int         `json:"frequency"`
+    LoRaSNR     int         `json:"loRaSNR"`
+    Mac         string      `json:"mac"`
+    RfChain     int         `json:"rfChain"`
+    Rssi        int         `json:"rssi"`
+    Size        int         `json:"size"`
+    Time        string      `json:"time"`
+    Timestamp   int32       `json:"timestamp"`
+}
+
+type DataRate struct{
+    Bandwidth       int     `json:"bandwidth"`
+    Modulation      string  `json:"modulation"`
+    SpreadFactor    int     `json:"spreadFactor"`
+    BitRate         int     `json:"bitrate"`
+}
+
+
+func main() {
+
+
+    /*
+    *
+    * Create the mqtt client. Replace vlues where needed.
+    *
+    */
+    opts := MQTT.NewClientOptions()
+    opts.AddBroker("tcp://localhost:1883")
+    opts.SetUsername("lora")
+    opts.SetPassword("lora")
+
+    client := MQTT.NewClient(opts)
+    
+    if token := client.Connect(); token.Wait() && token.Error() != nil {
+        fmt.Println("Connection error")
+        fmt.Println(token.Error())
+    }
+
+    fmt.Println("Connection established.")
+
+    /*
+    * Define Gateway mac for message publishing.
+    * Replace with correct value.
+    */
+
+    gwMac := "00800000a00006cd"
+
+    /*
+    *
+    * To test OTAA activation, send a join request.
+    * Replace appKey, devEUI and appEUI with the correct ones.
+    *
+    */
+    appKey := [16]byte{2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2}
+    appEUI := [8]byte{1, 1, 1, 1, 1, 1, 1, 1}
+    devEUI := [8]byte{2, 2, 2, 2, 2, 2, 2, 2}
+
+    /*
+    * For testing purposes, create a node with ABP activation and relaxed frame counter enabled.
+    Generate the keys and devAddr and replace them on nwsHexKey, appHexKey and devHexAddr.
+    */
+    nwsHexkey := "3bc0ddd455d320a6f36ff6f2a25057d0"
+    appHexKey := "00de01b45b59a4df9cc2b3fa5eb0fe7c"
+    devHexAddr := "07262b83"
+
+    rand.Seed(time.Now().UnixNano()/10000)
+
+    var devAddr ([4]byte)
+    da, _ := hex.DecodeString(devHexAddr)
+    copy(devAddr[:], da[:])
+
+    var nwkSKey ([16]byte)
+    nk, _ := hex.DecodeString(nwsHexkey)
+    copy(nwkSKey[:], nk[:])  //{2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3}
+    var appSKey ([16]byte)
+    ak, _ := hex.DecodeString(appHexKey)
+    copy(appSKey[:], ak[:]) //{2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2}
+
+
+    /*
+    * Uncomment to perform an OTAA join request.
+    */
+
+    join(client, appKey, appEUI, devEUI, gwMac, false)
+
+    /*
+    * Send a test message with an ABP activated node.
+    */
+
+    mPayload := []byte{1, 2, 3, 4} //Data to send.
+    err := sendMessage(client, devAddr, appSKey, nwkSKey, gwMac, mPayload)
+    if err != nil {
+        fmt.Println(err)
+    }
+
+}
+
+func createMessage(gwMac string, payload []byte) *Message {
+
+    /*
+    *
+    * Set correct value for your environment.
+    *
+    */
+
+    dataRate := &DataRate{
+        Bandwidth: 500,
+        Modulation: "LORA",
+        SpreadFactor: 8,
+        BitRate: 0}
+
+    rxInfo := &RxInfo{
+        Channel:    0,
+        CodeRate:   "4/5",
+        CrcStatus:  1,
+        DataRate:   dataRate,
+        Frequency:  902300000,
+        LoRaSNR:    7,
+        Mac:        gwMac,
+        RfChain:    1,
+        Rssi:       -57,
+        Size:       23,
+        Time:       time.Now().Format(time.RFC3339),
+        Timestamp:  int32(time.Now().UnixNano() / 1000000)}
+
+    message := &Message{
+        PhyPayload:     string(payload),
+        RxInfo:         rxInfo}
+
+    return message
+
+}
+
+func publish(client MQTT.Client, topic string, v interface{}) error {
+    bytes, err := json.Marshal(v)
+    fmt.Println("Marshaled")
+    fmt.Println(string(bytes))
+    if err != nil {
+        fmt.Println(err)
+        return err
+    }
+    fmt.Println("Publishing")
+    if token := client.Publish(topic, 0, false, bytes); token.Wait() && token.Error() != nil {
+        fmt.Println(token.Error())
+        return token.Error()
+    }
+    return nil
+}
+
+func join(client MQTT.Client, appKey [16]byte, appEUI, devEUI [8]byte, gwMac string, send bool) error {
+
+    //Send a join only when set to true.
+    if !send {
+        return nil
+    }
+
+    joinPhy := lorawan.PHYPayload{
+        MHDR: lorawan.MHDR{
+            MType: lorawan.JoinRequest,
+            Major: lorawan.LoRaWANR1,
+        },
+        MACPayload: &lorawan.JoinRequestPayload{
+            AppEUI:   appEUI,
+            DevEUI:   devEUI,
+            DevNonce: [2]byte{byte(rand.Intn(255)), byte(rand.Intn(255))},
+        },
+    }
+
+    if err := joinPhy.SetMIC(appKey); err != nil {
+        panic(err)
+    }
+
+    joinStr, err := joinPhy.MarshalText()
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println(string(joinStr))
+
+    message := createMessage(gwMac, joinStr)
+
+    pErr := publish(client, "gateway/" + gwMac + "/rx", message)
+
+    return pErr
+
+}
+
+func sendMessage(client MQTT.Client, devAddr [4]byte, appSKey, nwkSKey [16]byte, gwMac string, payload []byte) error {
+
+    fPort := uint8(1)
+
+    phy := lorawan.PHYPayload{
+        MHDR: lorawan.MHDR{
+            MType: lorawan.UnconfirmedDataUp,
+            Major: lorawan.LoRaWANR1,
+        },
+        MACPayload: &lorawan.MACPayload{
+            FHDR: lorawan.FHDR{
+
+                DevAddr: lorawan.DevAddr(devAddr),
+                FCtrl: lorawan.FCtrl{
+                    ADR:       false,
+                    ADRACKReq: false,
+                    ACK:       false,
+                },
+                FCnt:  0,
+                FOpts: []lorawan.MACCommand{}, // you can leave this out when there is no MAC command to send
+            },
+            FPort:      &fPort,
+            FRMPayload: []lorawan.Payload{&lorawan.DataPayload{Bytes: payload}},
+        },
+    }
+
+
+    if err := phy.EncryptFRMPayload(appSKey); err != nil {
+        panic(err)
+    }
+
+    if err := phy.SetMIC(nwkSKey); err != nil {
+        panic(err)
+    }
+
+    upDataStr, err := phy.MarshalText()
+    if err != nil {
+        panic(err)
+    }
+
+    message := createMessage(gwMac, upDataStr)
+
+    pErr := publish(client, "gateway/" + gwMac + "/rx", message)
+
+    return pErr
+
+}
