@@ -105,9 +105,29 @@ func main() {
 
     join(client, appKey, appEUI, devEUI, gwMac, false)
 
+
+    /*
+    * Check MIC
+    */
+
+    var testDevEUI ([8]byte)
+    dEUI, _ := hex.DecodeString("0004a30b001a5ae1")
+    copy(testDevEUI[:], dEUI[:])
+
+    var testAppEUI ([8]byte)
+    aEUI, _ := hex.DecodeString("70b3d57ef0005ed5")
+    copy(testAppEUI[:], aEUI[:])
+
+    var testAppKey ([16]byte)
+    aKey, _ := hex.DecodeString("9bf8e134a8c6fadb661419759f953a98")
+    copy(testAppKey[:], aKey[:])
+
+    testMIC(testAppKey, testAppEUI, testDevEUI)
+
     /*
     * Send a test message with an ABP activated node.
     */
+
 
     mPayload := []byte{1, 2, 3, 4} //Data to send.
     err := sendMessage(client, devAddr, appSKey, nwkSKey, gwMac, mPayload)
@@ -205,6 +225,35 @@ func join(client MQTT.Client, appKey [16]byte, appEUI, devEUI [8]byte, gwMac str
 
     return pErr
 
+}
+
+func testMIC(appKey [16]byte, appEUI, devEUI [8]byte) error {
+    joinPhy := lorawan.PHYPayload{
+        MHDR: lorawan.MHDR{
+            MType: lorawan.JoinRequest,
+            Major: lorawan.LoRaWANR1,
+        },
+        MACPayload: &lorawan.JoinRequestPayload{
+            AppEUI:   appEUI,
+            DevEUI:   devEUI,
+            DevNonce: [2]byte{byte(rand.Intn(255)), byte(rand.Intn(255))},
+        },
+    }
+
+    if err := joinPhy.SetMIC(appKey); err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Printing MIC")
+    fmt.Println(hex.EncodeToString(joinPhy.MIC[:]))
+
+    joinStr, err := joinPhy.MarshalText()
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println(joinStr)
+
+    return nil
 }
 
 func sendMessage(client MQTT.Client, devAddr [4]byte, appSKey, nwkSKey [16]byte, gwMac string, payload []byte) error {
