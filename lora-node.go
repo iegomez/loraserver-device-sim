@@ -110,7 +110,7 @@ func main() {
     * Check MIC
     */
 
-    var testDevEUI ([8]byte)
+    /*var testDevEUI ([8]byte)
     dEUI, _ := hex.DecodeString("0004a30b001a5ae1")
     copy(testDevEUI[:], dEUI[:])
 
@@ -122,7 +122,7 @@ func main() {
     aKey, _ := hex.DecodeString("9bf8e134a8c6fadb661419759f953a98")
     copy(testAppKey[:], aKey[:])
 
-    testMIC(testAppKey, testAppEUI, testDevEUI)
+    testMIC(testAppKey, testAppEUI, testDevEUI)*/
 
     /*
     * Send a test message with an ABP activated node.
@@ -218,6 +218,9 @@ func join(client MQTT.Client, appKey [16]byte, appEUI, devEUI [8]byte, gwMac str
     }
 
     fmt.Println(string(joinStr))
+    
+    fmt.Println("Printing MIC")
+    fmt.Println(hex.EncodeToString(joinPhy.MIC[:]))
 
     message := createMessage(gwMac, joinStr)
 
