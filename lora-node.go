@@ -6,7 +6,9 @@ import (
     "encoding/json"
     "time"
     "encoding/hex"
+    "encoding/binary"
     "math/rand"
+    "math"
     MQTT "github.com/eclipse/paho.mqtt.golang"
 )
 
@@ -127,12 +129,28 @@ func main() {
     /*
     * Send a test message with an ABP activated node.
     */
+    var lat float32 = -33.4335625
+    var lng float32 = -70.6217137
 
 
-    mPayload := []byte{1, 2, 3, 4} //Data to send.
-    err := sendMessage(client, devAddr, appSKey, nwkSKey, gwMac, mPayload)
-    if err != nil {
-        fmt.Println(err)
+    for {
+        byte0 := []byte{0} //Data to send.
+
+        lat += rand.Float32()/10000.0
+        lng += rand.Float32()/10000.0
+
+        mPayload := append(byte0[:], generateTemp1byte(int8(rand.Intn(35)))[:]...)
+        mPayload = append(mPayload[:], byte0[:]...)
+        mPayload = append(mPayload[:], generateLat(lat)[:]...)
+        mPayload = append(mPayload[:], generateLng(lng)[:]...)
+
+        fmt.Println(mPayload)
+
+        err := sendMessage(client, devAddr, appSKey, nwkSKey, gwMac, mPayload)
+        if err != nil {
+            fmt.Println(err)
+        }
+        time.Sleep(5 * time.Second)
     }
 
 }
@@ -163,7 +181,7 @@ func createMessage(gwMac string, payload []byte) *Message {
         Rssi:       -57,
         Size:       23,
         Time:       time.Now().Format(time.RFC3339),
-        Timestamp:  int32(time.Now().UnixNano() / 1000000)}
+        Timestamp:  int32(time.Now().UnixNano() / 1000000000)}
 
     message := &Message{
         PhyPayload:     string(payload),
@@ -218,7 +236,7 @@ func join(client MQTT.Client, appKey [16]byte, appEUI, devEUI [8]byte, gwMac str
     }
 
     fmt.Println(string(joinStr))
-    
+
     fmt.Println("Printing MIC")
     fmt.Println(hex.EncodeToString(joinPhy.MIC[:]))
 
@@ -306,3 +324,33 @@ func sendMessage(client MQTT.Client, devAddr [4]byte, appSKey, nwkSKey [16]byte,
     return pErr
 
 }
+
+func generateTemp1byte(t int8) []byte {
+    temp := uint8(t)
+    bRep := make([]byte, 1)
+    bRep[0] = temp
+    return bRep
+}
+
+func generateTemp2byte(t int16) []byte {
+
+    temp := uint16( float32(t/127.0) * float32(math.Pow(2, 15)) )
+    bRep := make([]byte, 2)
+    binary.BigEndian.PutUint16(bRep, temp)
+    return bRep
+}
+
+func generateLat(l float32) []byte {
+    lat := uint32( (l/90.0) * float32(math.Pow(2, 31)) )
+    bRep := make([]byte, 4)
+    binary.BigEndian.PutUint32(bRep, lat)
+    return bRep
+}
+
+func generateLng(l float32) []byte {
+    lng := uint32( (l/180.0) * float32(math.Pow(2, 31)) )
+    bRep := make([]byte, 4)
+    binary.BigEndian.PutUint32(bRep, lng)
+    return bRep
+}
+
