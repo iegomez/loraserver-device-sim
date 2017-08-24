@@ -100,28 +100,10 @@ func main() {
 	copy(appSKey[:], ak[:]) //{2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2}
 
 	/*
-	 * Uncomment to perform an OTAA join request.
+	 * Change last param to true to make an OTAA join request.
 	 */
 
 	join(client, appKey, appEUI, devEUI, gwMac, false)
-
-	/*
-	 * Check MIC
-	 */
-
-	/*var testDevEUI ([8]byte)
-	  dEUI, _ := hex.DecodeString("0004a30b001a5ae1")
-	  copy(testDevEUI[:], dEUI[:])
-
-	  var testAppEUI ([8]byte)
-	  aEUI, _ := hex.DecodeString("70b3d57ef0005ed5")
-	  copy(testAppEUI[:], aEUI[:])
-
-	  var testAppKey ([16]byte)
-	  aKey, _ := hex.DecodeString("9bf8e134a8c6fadb661419759f953a98")
-	  copy(testAppKey[:], aKey[:])
-
-	  testMIC(testAppKey, testAppEUI, testDevEUI)*/
 
 	/*
 	 * Send a test message with an ABP activated node.
@@ -155,9 +137,7 @@ func main() {
 func createMessage(gwMac string, payload []byte) *Message {
 
 	/*
-	 *
-	 * Set correct value for your environment.
-	 *
+	 * Set correct values for your environment.
 	 */
 
 	dataRate := &DataRate{
