@@ -49,8 +49,8 @@ func main() {
 	 */
 	opts := MQTT.NewClientOptions()
 	opts.AddBroker("tcp://localhost:1883")
-	opts.SetUsername("lora")
-	opts.SetPassword("lora")
+	opts.SetUsername("loraserver_gw")
+	opts.SetPassword("loraserver_gw")
 
 	client := MQTT.NewClient(opts)
 
@@ -111,13 +111,15 @@ func main() {
 	var lat float32 = -33.4335625
 	var lng float32 = -70.6217137
 
+	var temp = 20
+
 	for {
 		byte0 := []byte{0} //Data to send.
 
 		lat += rand.Float32() / 1000.0
 		lng += rand.Float32() / 1000.0
 
-		mPayload := append(byte0[:], generateTemp1byte(int8(rand.Intn(35)))[:]...)
+		mPayload := append(byte0[:], generateTemp1byte(int8(temp))[:]...)
 		mPayload = append(mPayload[:], byte0[:]...)
 		mPayload = append(mPayload[:], generateLat(lat)[:]...)
 		mPayload = append(mPayload[:], generateLng(lng)[:]...)
@@ -129,7 +131,11 @@ func main() {
 		if err != nil {
 			fmt.Println(err)
 		}
-		time.Sleep(5 * time.Second)
+		temp++
+		if temp > 50 {
+			temp = 20
+		}
+		time.Sleep(1 * time.Second)
 	}
 
 }
@@ -260,7 +266,7 @@ func sendMessage(client MQTT.Client, devAddr [4]byte, appSKey, nwkSKey [16]byte,
 
 	phy := lorawan.PHYPayload{
 		MHDR: lorawan.MHDR{
-			MType: lorawan.UnconfirmedDataUp,
+			MType: lorawan.ConfirmedDataUp,
 			Major: lorawan.LoRaWANR1,
 		},
 		MACPayload: &lorawan.MACPayload{

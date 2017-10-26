@@ -16,10 +16,11 @@ MQTT::Client.connect(
   :username => 'lora',
   :password => 'lora'
 ) do |c|
-    c.subscribe("application/1/node/0202020202020202/join")
-    c.subscribe("application/1/node/0202020202020202/rx")
-    c.subscribe("gateway/00800000a00006cd/rx")
-    c.subscribe("gateway/00800000a00006cd/tx")
+    #c.subscribe("application/1/node/0202020202020202/join")
+    #c.subscribe("application/1/node/0202020202020202/rx")
+    #c.subscribe("gateway/00800000a00006cd/rx")
+    #c.subscribe("gateway/00800000a00006cd/tx")
+    c.subscribe("#")
 
     c.get do |topic, message|
       puts "\n***\n"
