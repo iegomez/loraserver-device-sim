@@ -40,6 +40,12 @@ type DataRate struct {
 	BitRate      int    `json:"bitrate"`
 }
 
+type Location struct {
+	Lat       float32
+	Lng       float32
+	Elevation float32
+}
+
 func main() {
 
 	/*
@@ -50,7 +56,7 @@ func main() {
 	opts := MQTT.NewClientOptions()
 	opts.AddBroker("tcp://localhost:1883")
 	opts.SetUsername("loraserver_gw")
-	opts.SetPassword("loraserver_gw")
+	opts.SetPassword("ChpP2eeW1Tck")
 
 	client := MQTT.NewClient(opts)
 
@@ -66,7 +72,7 @@ func main() {
 	 * Replace with correct value.
 	 */
 
-	gwMac := "00800000a00006cd"
+	gwMac := "b827ebfffee100b5"
 
 	/*
 	 *
@@ -100,6 +106,31 @@ func main() {
 	copy(appSKey[:], ak[:]) //{2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2}
 
 	/*
+	* Generate second testing device
+	 */
+
+	/*
+	   * For testing purposes, create a node with ABP activation and relaxed frame counter enabled.
+	   Generate the keys and devAddr and replace them on nwsHexKey, appHexKey and devHexAddr.
+	*/
+	nwsHexkey2 := "ae3bca7b09d3def6bcf2552504353665"
+	appHexKey2 := "c457759fd07709518793310284aeae82"
+	devHexAddr2 := "073de9e6"
+
+	rand.Seed(time.Now().UnixNano() / 10000)
+
+	var devAddr2 ([4]byte)
+	da2, _ := hex.DecodeString(devHexAddr2)
+	copy(devAddr2[:], da2[:])
+
+	var nwkSKey2 ([16]byte)
+	nk2, _ := hex.DecodeString(nwsHexkey2)
+	copy(nwkSKey2[:], nk2[:]) //{2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3}
+	var appSKey2 ([16]byte)
+	ak2, _ := hex.DecodeString(appHexKey2)
+	copy(appSKey2[:], ak2[:]) //{2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2}
+
+	/*
 	 * Change last param to true to make an OTAA join request.
 	 */
 
@@ -111,13 +142,23 @@ func main() {
 	var lat float32 = -33.4335625
 	var lng float32 = -70.6217137
 
+	var lat2 float32 = -33.4335625
+	var lng2 float32 = -70.6217137
+
 	var temp = 20
 
 	for {
+
 		byte0 := []byte{0} //Data to send.
 
 		lat += rand.Float32() / 1000.0
 		lng += rand.Float32() / 1000.0
+
+		lat2 += rand.Float32() / 1000.0
+		lng2 += rand.Float32() / 1000.0
+
+		//lat = location.Lat
+		//lng = location.Lng
 
 		mPayload := append(byte0[:], generateTemp1byte(int8(temp))[:]...)
 		mPayload = append(mPayload[:], byte0[:]...)
@@ -125,17 +166,30 @@ func main() {
 		mPayload = append(mPayload[:], generateLng(lng)[:]...)
 		mPayload = append(mPayload[:], generateRisk(int8(rand.Intn(10)))[:]...)
 
+		mPayload2 := append(byte0[:], generateTemp1byte(int8(temp))[:]...)
+		mPayload2 = append(mPayload2[:], byte0[:]...)
+		mPayload2 = append(mPayload2[:], generateLat(lat2)[:]...)
+		mPayload2 = append(mPayload2[:], generateLng(lng2)[:]...)
+		mPayload2 = append(mPayload2[:], generateRisk(int8(rand.Intn(10)))[:]...)
+
 		fmt.Println(mPayload)
+		fmt.Println(mPayload2)
 
 		err := sendMessage(client, devAddr, appSKey, nwkSKey, gwMac, mPayload)
 		if err != nil {
 			fmt.Println(err)
 		}
+
+		/*err2 := sendMessage(client, devAddr2, appSKey2, nwkSKey2, gwMac, mPayload2)
+		if err2 != nil {
+			fmt.Println(err2)
+		}*/
+
 		temp++
 		if temp > 50 {
 			temp = 20
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 
 }
