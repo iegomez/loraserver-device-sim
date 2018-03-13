@@ -147,9 +147,24 @@ func main() {
 
 	var temp = 20
 
-	for {
+	var light int16 = 1345
+	var altitude float32 = 600
 
-		byte0 := []byte{0} //Data to send.
+	/*
+	* Preamble carries the message preamble as for our defined protocol, which consists of 1 byte.
+	* 7: is gps fixed.
+	* 6: does message carry a panic alert.
+	* 5: Reserved.
+	* 4: Reserved.
+	* 3-0: Data group.
+	*
+	* So, for example 10xx0000 would mean GPS is fixed, there's no panic and group data is 0.
+	*
+	 */
+	preamble := []byte{uint8(128)}
+	preamble2 := []byte{uint8(129)}
+
+	for {
 
 		lat += rand.Float32() / 1000.0
 		lng += rand.Float32() / 1000.0
@@ -157,27 +172,44 @@ func main() {
 		lat2 += rand.Float32() / 1000.0
 		lng2 += rand.Float32() / 1000.0
 
+		light += int16(rand.Float32() * 5)
+		altitude += (rand.Float32() * 5)
+
 		//lat = location.Lat
 		//lng = location.Lng
 
-		mPayload := append(byte0[:], generateTemp1byte(int8(temp))[:]...)
+		byte0 := []byte{0} //Data to send.
+
+		mPayload := append(preamble[:], byte0[:]...)
+		mPayload = append(mPayload[:], generateTemp1byte(int8(temp))[:]...)
 		mPayload = append(mPayload[:], byte0[:]...)
 		mPayload = append(mPayload[:], generateLat(lat)[:]...)
 		mPayload = append(mPayload[:], generateLng(lng)[:]...)
 		mPayload = append(mPayload[:], generateRisk(int8(rand.Intn(10)))[:]...)
 
-		mPayload2 := append(byte0[:], generateTemp1byte(int8(temp))[:]...)
+		g2Payload := append(preamble2[:], generateLight(light)[:]...)
+		g2Payload = append(g2Payload, generateAltitude(altitude)[:]...)
+
+		mPayload2 := append(preamble[:], byte0[:]...)
+		mPayload2 = append(mPayload2[:], generateTemp1byte(int8(temp))[:]...)
 		mPayload2 = append(mPayload2[:], byte0[:]...)
 		mPayload2 = append(mPayload2[:], generateLat(lat2)[:]...)
 		mPayload2 = append(mPayload2[:], generateLng(lng2)[:]...)
 		mPayload2 = append(mPayload2[:], generateRisk(int8(rand.Intn(10)))[:]...)
 
 		fmt.Println(mPayload)
-		fmt.Println(mPayload2)
+		fmt.Println(g2Payload)
 
 		err := sendMessage(client, devAddr, appSKey, nwkSKey, gwMac, mPayload)
 		if err != nil {
 			fmt.Println(err)
+		}
+
+		time.Sleep(2 * time.Second)
+
+		g2Err := sendMessage(client, devAddr, appSKey, nwkSKey, gwMac, g2Payload)
+		if g2Err != nil {
+			fmt.Println(g2Err)
 		}
 
 		/*err2 := sendMessage(client, devAddr2, appSKey2, nwkSKey2, gwMac, mPayload2)
@@ -189,7 +221,7 @@ func main() {
 		if temp > 50 {
 			temp = 20
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 
 }
@@ -241,6 +273,13 @@ func publish(client MQTT.Client, topic string, v interface{}) error {
 		fmt.Println(token.Error())
 		return token.Error()
 	}
+
+	fmt.Println("Plugin debug publishing")
+	if dToken := client.Publish("application/1/node/0004a30b001abe98/rx", 0, false, []byte("0101220501f20132ff4d")); dToken.Wait() && dToken.Error() != nil {
+		fmt.Println(dToken.Error())
+		return dToken.Error()
+	}
+
 	return nil
 }
 
@@ -380,6 +419,22 @@ func generateTemp2byte(t int16) []byte {
 	temp := uint16(float32(t/127.0) * float32(math.Pow(2, 15)))
 	bRep := make([]byte, 2)
 	binary.BigEndian.PutUint16(bRep, temp)
+	return bRep
+}
+
+func generateLight(l int16) []byte {
+
+	light := uint16(l)
+	bRep := make([]byte, 2)
+	binary.BigEndian.PutUint16(bRep, light)
+	return bRep
+}
+
+func generateAltitude(a float32) []byte {
+
+	alt := uint16(float32(a/1200) * float32(math.Pow(2, 15)))
+	bRep := make([]byte, 2)
+	binary.BigEndian.PutUint16(bRep, alt)
 	return bRep
 }
 
