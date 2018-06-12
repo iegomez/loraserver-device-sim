@@ -161,10 +161,16 @@ func main() {
 	* So, for example 10xx0000 would mean GPS is fixed, there's no panic and group data is 0.
 	*
 	 */
-	preamble := []byte{uint8(128)}
-	preamble2 := []byte{uint8(129)}
+	/*preamble := []byte{uint8(128)}
+	preamble2 := []byte{uint8(129)}*/
+	//preamble := []byte{}
+	//preamble2 := []byte{}
+
+	c1 := 0
 
 	for {
+
+		c1++
 
 		lat += rand.Float32() / 1000.0
 		lng += rand.Float32() / 1000.0
@@ -180,37 +186,54 @@ func main() {
 
 		byte0 := []byte{0} //Data to send.
 
-		mPayload := append(preamble[:], byte0[:]...)
-		mPayload = append(mPayload[:], generateTemp1byte(int8(temp))[:]...)
-		mPayload = append(mPayload[:], byte0[:]...)
-		mPayload = append(mPayload[:], generateLat(lat)[:]...)
-		mPayload = append(mPayload[:], generateLng(lng)[:]...)
-		mPayload = append(mPayload[:], generateRisk(int8(rand.Intn(10)))[:]...)
+		mPayload := byte0[:]  //append(preamble[:], byte0[:]...)
+		mPayload2 := byte0[:] //append(preamble[:], byte0[:]...)
+		//g2Payload := generateLight(light)[:] //append(preamble2[:], generateLight(light)[:]...)
 
-		g2Payload := append(preamble2[:], generateLight(light)[:]...)
-		g2Payload = append(g2Payload, generateAltitude(altitude)[:]...)
+		if c1%2 == 0 {
+			mPayload = append(mPayload[:], generateTemp1byte(int8(temp))[:]...)
+			mPayload = append(mPayload[:], byte0[:]...)
+			mPayload = append(mPayload[:], generateLat(lat)[:]...)
+			mPayload = append(mPayload[:], generateLng(lng)[:]...)
+			mPayload = append(mPayload[:], generateRisk(int8(rand.Intn(10)))[:]...)
 
-		mPayload2 := append(preamble[:], byte0[:]...)
-		mPayload2 = append(mPayload2[:], generateTemp1byte(int8(temp))[:]...)
-		mPayload2 = append(mPayload2[:], byte0[:]...)
-		mPayload2 = append(mPayload2[:], generateLat(lat2)[:]...)
-		mPayload2 = append(mPayload2[:], generateLng(lng2)[:]...)
-		mPayload2 = append(mPayload2[:], generateRisk(int8(rand.Intn(10)))[:]...)
+			//g2Payload = append(g2Payload, generateAltitude(altitude)[:]...)
+
+			mPayload2 = append(mPayload2[:], generateTemp1byte(int8(temp))[:]...)
+			mPayload2 = append(mPayload2[:], byte0[:]...)
+			mPayload2 = append(mPayload2[:], generateLat(lat2)[:]...)
+			mPayload2 = append(mPayload2[:], generateLng(lng2)[:]...)
+			mPayload2 = append(mPayload2[:], generateRisk(int8(rand.Intn(10)))[:]...)
+		} else {
+			mPayload = append(mPayload[:], generateTemp1byte(int8(temp))[:]...)
+			mPayload = append(mPayload[:], byte0[:]...)
+			mPayload = append(mPayload[:], generateLat(0)[:]...)
+			mPayload = append(mPayload[:], generateLng(0)[:]...)
+			mPayload = append(mPayload[:], generateRisk(int8(rand.Intn(10)))[:]...)
+
+			//g2Payload = append(g2Payload, generateAltitude(altitude)[:]...)
+
+			mPayload2 = append(mPayload2[:], generateTemp1byte(int8(temp))[:]...)
+			mPayload2 = append(mPayload2[:], byte0[:]...)
+			mPayload2 = append(mPayload2[:], generateLat(0)[:]...)
+			mPayload2 = append(mPayload2[:], generateLng(0)[:]...)
+			mPayload2 = append(mPayload2[:], generateRisk(int8(rand.Intn(10)))[:]...)
+		}
 
 		fmt.Println(mPayload)
-		fmt.Println(g2Payload)
+		//fmt.Println(g2Payload)
 
 		err := sendMessage(client, devAddr, appSKey, nwkSKey, gwMac, mPayload)
 		if err != nil {
 			fmt.Println(err)
 		}
 
-		time.Sleep(2 * time.Second)
+		/*time.Sleep(2 * time.Second)
 
 		g2Err := sendMessage(client, devAddr, appSKey, nwkSKey, gwMac, g2Payload)
 		if g2Err != nil {
 			fmt.Println(g2Err)
-		}
+		}*/
 
 		/*err2 := sendMessage(client, devAddr2, appSKey2, nwkSKey2, gwMac, mPayload2)
 		if err2 != nil {
@@ -261,6 +284,7 @@ func createMessage(gwMac string, payload []byte) *Message {
 }
 
 func publish(client MQTT.Client, topic string, v interface{}) error {
+	fmt.Printf("client connected: %v\n", client.IsConnected())
 	bytes, err := json.Marshal(v)
 	fmt.Println("Marshaled")
 	fmt.Println(string(bytes))
