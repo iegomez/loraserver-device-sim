@@ -13,11 +13,13 @@ import (
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 )
 
+//Message holds physical payload and rx info.
 type Message struct {
 	PhyPayload string  `json:"phyPayload"`
 	RxInfo     *RxInfo `json:"rxInfo"`
 }
 
+//RxInfo holds all relevant information of a lora message.
 type RxInfo struct {
 	Channel   int       `json:"channel"`
 	CodeRate  string    `json:"codeRate"`
@@ -33,6 +35,7 @@ type RxInfo struct {
 	Timestamp int32     `json:"timestamp"`
 }
 
+//DataRate holds relevant info dor data rate.
 type DataRate struct {
 	Bandwidth    int    `json:"bandwidth"`
 	Modulation   string `json:"modulation"`
@@ -40,10 +43,16 @@ type DataRate struct {
 	BitRate      int    `json:"bitrate"`
 }
 
+//Location holds latitude, longitude and elevation.
 type Location struct {
 	Lat       float32
 	Lng       float32
 	Elevation float32
+}
+
+//Device holds device keys, addr, eui and fcnt.
+type Device struct {
+	EUI [8]byte
 }
 
 func main() {
@@ -55,8 +64,8 @@ func main() {
 	 */
 	opts := MQTT.NewClientOptions()
 	opts.AddBroker("tcp://localhost:1883")
-	opts.SetUsername("loraserver_gw")
-	opts.SetPassword("ChpP2eeW1Tck")
+	opts.SetUsername("openaquila_gw")
+	opts.SetPassword("W3qFe6QRHu")
 
 	client := MQTT.NewClient(opts)
 
@@ -72,7 +81,7 @@ func main() {
 	 * Replace with correct value.
 	 */
 
-	gwMac := "b827ebfffee100b5"
+	gwMac := "b827ebfffeb13d1f"
 
 	/*
 	 *
@@ -81,8 +90,8 @@ func main() {
 	 *
 	 */
 	appKey := [16]byte{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
-	appEUI := [8]byte{1, 1, 1, 1, 1, 1, 1, 1}
-	devEUI := [8]byte{2, 2, 2, 2, 2, 2, 2, 2}
+	appEUI := [8]byte{0, 0, 0, 0, 0, 0, 0, 2}
+	devEUI := [8]byte{0, 0, 0, 0, 0, 0, 0, 2}
 
 	/*
 	   * For testing purposes, create a node with ABP activation and relaxed frame counter enabled.
@@ -113,7 +122,7 @@ func main() {
 	   * For testing purposes, create a node with ABP activation and relaxed frame counter enabled.
 	   Generate the keys and devAddr and replace them on nwsHexKey, appHexKey and devHexAddr.
 	*/
-	nwsHexkey2 := "ae3bca7b09d3def6bcf2552504353665"
+	/*nwsHexkey2 := "ae3bca7b09d3def6bcf2552504353665"
 	appHexKey2 := "c457759fd07709518793310284aeae82"
 	devHexAddr2 := "073de9e6"
 
@@ -128,7 +137,7 @@ func main() {
 	copy(nwkSKey2[:], nk2[:]) //{2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3}
 	var appSKey2 ([16]byte)
 	ak2, _ := hex.DecodeString(appHexKey2)
-	copy(appSKey2[:], ak2[:]) //{2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2}
+	copy(appSKey2[:], ak2[:]) //{2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2}*/
 
 	/*
 	 * Change last param to true to make an OTAA join request.
@@ -139,7 +148,7 @@ func main() {
 	/*
 	 * Send a test message with an ABP activated node.
 	 */
-	var lat float32 = -33.4335625
+	/*var lat float32 = -33.4335625
 	var lng float32 = -70.6217137
 
 	var lat2 float32 = -33.4335625
@@ -148,7 +157,7 @@ func main() {
 	var temp = 20
 
 	var light int16 = 1345
-	var altitude float32 = 600
+	var altitude float32 = 600*/
 
 	/*
 	* Preamble carries the message preamble as for our defined protocol, which consists of 1 byte.
@@ -172,53 +181,30 @@ func main() {
 
 		c1++
 
-		lat += rand.Float32() / 1000.0
+		/*lat += rand.Float32() / 1000.0
 		lng += rand.Float32() / 1000.0
 
 		lat2 += rand.Float32() / 1000.0
 		lng2 += rand.Float32() / 1000.0
 
 		light += int16(rand.Float32() * 5)
-		altitude += (rand.Float32() * 5)
+		altitude += (rand.Float32() * 5)*/
 
-		//lat = location.Lat
-		//lng = location.Lng
+		/*"temperature": {
+		      "value":((bytes[0]*256+bytes[1])/100),"unit":"°C"
+		    },
+		   "pressure": {
+		      "value":((bytes[2]*16*16*16*16+bytes[3]*256+bytes[4])/100),"unit":"hPa"
+		    },
+		   "humidity": {
+		      "value":((bytes[5]*256+bytes[6])/1024),"unit":"%"
+				}*/
 
-		byte0 := []byte{0} //Data to send.
+		temp := [2]byte{uint8(rand.Intn(25)), uint8(rand.Intn(100))}
+		pressure := [3]byte{uint8(rand.Intn(2)), uint8(rand.Intn(20)), uint8(rand.Intn(100))}
+		humidity := [2]byte{uint8(rand.Intn(100)), uint8(rand.Intn(100))}
 
-		mPayload := byte0[:]  //append(preamble[:], byte0[:]...)
-		mPayload2 := byte0[:] //append(preamble[:], byte0[:]...)
-		//g2Payload := generateLight(light)[:] //append(preamble2[:], generateLight(light)[:]...)
-
-		if c1%2 == 0 {
-			mPayload = append(mPayload[:], generateTemp1byte(int8(temp))[:]...)
-			mPayload = append(mPayload[:], byte0[:]...)
-			mPayload = append(mPayload[:], generateLat(lat)[:]...)
-			mPayload = append(mPayload[:], generateLng(lng)[:]...)
-			mPayload = append(mPayload[:], generateRisk(int8(rand.Intn(10)))[:]...)
-
-			//g2Payload = append(g2Payload, generateAltitude(altitude)[:]...)
-
-			mPayload2 = append(mPayload2[:], generateTemp1byte(int8(temp))[:]...)
-			mPayload2 = append(mPayload2[:], byte0[:]...)
-			mPayload2 = append(mPayload2[:], generateLat(lat2)[:]...)
-			mPayload2 = append(mPayload2[:], generateLng(lng2)[:]...)
-			mPayload2 = append(mPayload2[:], generateRisk(int8(rand.Intn(10)))[:]...)
-		} else {
-			mPayload = append(mPayload[:], generateTemp1byte(int8(temp))[:]...)
-			mPayload = append(mPayload[:], byte0[:]...)
-			mPayload = append(mPayload[:], generateLat(0)[:]...)
-			mPayload = append(mPayload[:], generateLng(0)[:]...)
-			mPayload = append(mPayload[:], generateRisk(int8(rand.Intn(10)))[:]...)
-
-			//g2Payload = append(g2Payload, generateAltitude(altitude)[:]...)
-
-			mPayload2 = append(mPayload2[:], generateTemp1byte(int8(temp))[:]...)
-			mPayload2 = append(mPayload2[:], byte0[:]...)
-			mPayload2 = append(mPayload2[:], generateLat(0)[:]...)
-			mPayload2 = append(mPayload2[:], generateLng(0)[:]...)
-			mPayload2 = append(mPayload2[:], generateRisk(int8(rand.Intn(10)))[:]...)
-		}
+		mPayload := []byte{temp[0], temp[1], pressure[0], pressure[1], pressure[2], humidity[0], humidity[1]}
 
 		fmt.Println(mPayload)
 		//fmt.Println(g2Payload)
@@ -240,10 +226,10 @@ func main() {
 			fmt.Println(err2)
 		}*/
 
-		temp++
+		/*temp++
 		if temp > 50 {
 			temp = 20
-		}
+		}*/
 		time.Sleep(5 * time.Second)
 	}
 
@@ -298,11 +284,11 @@ func publish(client MQTT.Client, topic string, v interface{}) error {
 		return token.Error()
 	}
 
-	fmt.Println("Plugin debug publishing")
+	/*fmt.Println("Plugin debug publishing")
 	if dToken := client.Publish("application/1/node/0004a30b001abe98/rx", 0, false, []byte("0101220501f20132ff4d")); dToken.Wait() && dToken.Error() != nil {
 		fmt.Println(dToken.Error())
 		return dToken.Error()
-	}
+	}*/
 
 	return nil
 }
@@ -320,13 +306,13 @@ func join(client MQTT.Client, appKey [16]byte, appEUI, devEUI [8]byte, gwMac str
 			Major: lorawan.LoRaWANR1,
 		},
 		MACPayload: &lorawan.JoinRequestPayload{
-			AppEUI:   appEUI,
+			JoinEUI:  appEUI,
 			DevEUI:   devEUI,
-			DevNonce: [2]byte{byte(rand.Intn(255)), byte(rand.Intn(255))},
+			DevNonce: lorawan.DevNonce(uint16(65535)),
 		},
 	}
 
-	if err := joinPhy.SetMIC(appKey); err != nil {
+	if err := joinPhy.SetUplinkJoinMIC(appKey); err != nil {
 		panic(err)
 	}
 
@@ -355,14 +341,15 @@ func testMIC(appKey [16]byte, appEUI, devEUI [8]byte) error {
 			Major: lorawan.LoRaWANR1,
 		},
 		MACPayload: &lorawan.JoinRequestPayload{
-			AppEUI:   appEUI,
+			JoinEUI:  appEUI,
 			DevEUI:   devEUI,
-			DevNonce: [2]byte{byte(rand.Intn(255)), byte(rand.Intn(255))},
+			DevNonce: lorawan.DevNonce(uint16(65535)),
 		},
 	}
 
-	if err := joinPhy.SetMIC(appKey); err != nil {
-		panic(err)
+	if err := joinPhy.SetUplinkJoinMIC(appKey); err != nil {
+		fmt.Printf("set uplink join mic error: %s", err)
+		return err
 	}
 
 	fmt.Println("Printing MIC")
@@ -370,7 +357,8 @@ func testMIC(appKey [16]byte, appEUI, devEUI [8]byte) error {
 
 	joinStr, err := joinPhy.MarshalText()
 	if err != nil {
-		panic(err)
+		fmt.Printf("join marshal error: %s", err)
+		return err
 	}
 	fmt.Println(joinStr)
 
@@ -383,7 +371,7 @@ func sendMessage(client MQTT.Client, devAddr [4]byte, appSKey, nwkSKey [16]byte,
 
 	phy := lorawan.PHYPayload{
 		MHDR: lorawan.MHDR{
-			MType: lorawan.ConfirmedDataUp,
+			MType: lorawan.UnconfirmedDataUp,
 			Major: lorawan.LoRaWANR1,
 		},
 		MACPayload: &lorawan.MACPayload{
@@ -396,7 +384,7 @@ func sendMessage(client MQTT.Client, devAddr [4]byte, appSKey, nwkSKey [16]byte,
 					ACK:       false,
 				},
 				FCnt:  0,
-				FOpts: []lorawan.MACCommand{}, // you can leave this out when there is no MAC command to send
+				FOpts: []lorawan.Payload{}, // you can leave this out when there is no MAC command to send
 			},
 			FPort:      &fPort,
 			FRMPayload: []lorawan.Payload{&lorawan.DataPayload{Bytes: payload}},
@@ -404,16 +392,19 @@ func sendMessage(client MQTT.Client, devAddr [4]byte, appSKey, nwkSKey [16]byte,
 	}
 
 	if err := phy.EncryptFRMPayload(appSKey); err != nil {
-		panic(err)
+		fmt.Printf("encrypt frm payload: %s", err)
+		return err
 	}
 
-	if err := phy.SetMIC(nwkSKey); err != nil {
-		panic(err)
+	if err := phy.SetUplinkDataMIC(lorawan.LoRaWAN1_0, 0, 0, 0, nwkSKey, appSKey); err != nil {
+		fmt.Printf("set uplink mic error: %s", err)
+		return err
 	}
 
 	upDataStr, err := phy.MarshalText()
 	if err != nil {
-		panic(err)
+		fmt.Printf("marshal up data error: %s", err)
+		return err
 	}
 
 	message := createMessage(gwMac, upDataStr)
