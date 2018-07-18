@@ -1,4 +1,4 @@
-# ls-node-sim
+# loraserver-device-sim
 This package aims to help test the [loraserver](https://loraserver.io) infrastructure.  
 
 It allows to "simulate" a device by publishing an encrypted message directly to the loraserver as if it came from lora-gateway-bridge.

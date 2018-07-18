@@ -8,7 +8,7 @@ import (
 	"github.com/brocaar/lorawan"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
-	"github.com/iegomez/ls-node-sim"
+	lds "github.com/iegomez/loraserver-device-sim"
 )
 
 func main() {
@@ -32,17 +32,17 @@ func main() {
 	nwsHexKey := "3bc0ddd455d320a6f36ff6f2a25057d0"
 	appHexKey := "00de01b45b59a4df9cc2b3fa5eb0fe7c"
 	devHexAddr := "07262b83"
-	devAddr, err := lsnode.HexToDevAddress(devHexAddr)
+	devAddr, err := lds.HexToDevAddress(devHexAddr)
 	if err != nil {
 		fmt.Printf("dev addr error: %s", err)
 	}
 
-	nwkSKey, err := lsnode.HexToKey(nwsHexKey)
+	nwkSKey, err := lds.HexToKey(nwsHexKey)
 	if err != nil {
 		fmt.Printf("nwkskey error: %s", err)
 	}
 
-	appSKey, err := lsnode.HexToKey(appHexKey)
+	appSKey, err := lds.HexToKey(appHexKey)
 	if err != nil {
 		fmt.Printf("appskey error: %s", err)
 	}
@@ -51,7 +51,7 @@ func main() {
 	appEUI := [8]byte{0, 0, 0, 0, 0, 0, 0, 2}
 	devEUI := [8]byte{0, 0, 0, 0, 0, 0, 0, 2}
 
-	device := &lsnode.Device{
+	device := &lds.Device{
 		DevEUI:  devEUI,
 		DevAddr: devAddr,
 		NwkSKey: nwkSKey,
@@ -95,13 +95,13 @@ func main() {
 
 	//Construct DataRate RxInfo with proper values according to your band (example is for US 915).
 
-	dataRate := &lsnode.DataRate{
+	dataRate := &lds.DataRate{
 		Bandwidth:    500,
 		Modulation:   "LORA",
 		SpreadFactor: 8,
 		BitRate:      0}
 
-	rxInfo := &lsnode.RxInfo{
+	rxInfo := &lds.RxInfo{
 		Channel:   0,
 		CodeRate:  "4/5",
 		CrcStatus: 1,

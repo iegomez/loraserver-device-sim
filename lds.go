@@ -1,4 +1,4 @@
-package lsnode
+package lds
 
 import (
 	"encoding/binary"
@@ -33,7 +33,7 @@ type RxInfo struct {
 	Timestamp int32     `json:"timestamp"`
 }
 
-//DataRate holds relevant info dor data rate.
+//DataRate holds relevant info for data rate.
 type DataRate struct {
 	Bandwidth    int    `json:"bandwidth"`
 	Modulation   string `json:"modulation"`
