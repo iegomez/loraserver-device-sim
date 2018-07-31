@@ -62,64 +62,71 @@ func main() {
 		DlFcnt:  0,
 	}
 
-	/*
-		*	Make up some random values.
-		*
-		*	These should be decoded at lora-app-server with a proper function.
-		* 	For this example, the object should look like this:
+	for {
 
-			obj : {
-				"temperature": {
-					"value":((bytes[0]*256+bytes[1])/100),"unit":"°C"
-				},
-				"pressure": {
-					"value":((bytes[2]*16*16*16*16+bytes[3]*256+bytes[4])/100),"unit":"hPa"
-				},
-				"humidity": {
-					"value":((bytes[5]*256+bytes[6])/1024),"unit":"%"
+		/*
+			*	Make up some random values.
+			*
+			*	These should be decoded at lora-app-server with a proper function.
+			* 	For this example, the object should look like this:
+
+				obj : {
+					"temperature": {
+						"value":((bytes[0]*256+bytes[1])/100),"unit":"°C"
+					},
+					"pressure": {
+						"value":((bytes[2]*16*16*16*16+bytes[3]*256+bytes[4])/100),"unit":"hPa"
+					},
+					"humidity": {
+						"value":((bytes[5]*256+bytes[6])/1024),"unit":"%"
+					}
 				}
-			}
 
-		*
-	*/
-	rand.Seed(time.Now().UnixNano() / 10000)
-	temp := [2]byte{uint8(rand.Intn(25)), uint8(rand.Intn(100))}
-	pressure := [3]byte{uint8(rand.Intn(2)), uint8(rand.Intn(20)), uint8(rand.Intn(100))}
-	humidity := [2]byte{uint8(rand.Intn(100)), uint8(rand.Intn(100))}
+			*
+		*/
 
-	//Create the payload, data rate and rx info.
-	payload := []byte{temp[0], temp[1], pressure[0], pressure[1], pressure[2], humidity[0], humidity[1]}
+		rand.Seed(time.Now().UnixNano() / 10000)
+		temp := [2]byte{uint8(rand.Intn(25)), uint8(rand.Intn(100))}
+		pressure := [3]byte{uint8(rand.Intn(2)), uint8(rand.Intn(20)), uint8(rand.Intn(100))}
+		humidity := [2]byte{uint8(rand.Intn(100)), uint8(rand.Intn(100))}
 
-	//Change to your gateway MAC to build RxInfo.
-	gwMac := "b827ebfffeb13d1f"
+		//Create the payload, data rate and rx info.
+		payload := []byte{temp[0], temp[1], pressure[0], pressure[1], pressure[2], humidity[0], humidity[1]}
 
-	//Construct DataRate RxInfo with proper values according to your band (example is for US 915).
+		//Change to your gateway MAC to build RxInfo.
+		gwMac := "your-gw-mac"
 
-	dataRate := &lds.DataRate{
-		Bandwidth:    500,
-		Modulation:   "LORA",
-		SpreadFactor: 8,
-		BitRate:      0}
+		//Construct DataRate RxInfo with proper values according to your band (example is for US 915).
 
-	rxInfo := &lds.RxInfo{
-		Channel:   0,
-		CodeRate:  "4/5",
-		CrcStatus: 1,
-		DataRate:  dataRate,
-		Frequency: 902300000,
-		LoRaSNR:   7,
-		Mac:       gwMac,
-		RfChain:   1,
-		Rssi:      -57,
-		Size:      23,
-		Time:      time.Now().Format(time.RFC3339),
-		Timestamp: int32(time.Now().UnixNano() / 1000000000),
-	}
+		dataRate := &lds.DataRate{
+			Bandwidth:    500,
+			Modulation:   "LORA",
+			SpreadFactor: 8,
+			BitRate:      0}
 
-	//Now send an uplink
-	err = device.Uplink(client, lorawan.UnconfirmedDataUp, 1, rxInfo, payload)
-	if err != nil {
-		fmt.Printf("couldn't send uplink: %s\n", err)
+		rxInfo := &lds.RxInfo{
+			Channel:   0,
+			CodeRate:  "4/5",
+			CrcStatus: 1,
+			DataRate:  dataRate,
+			Frequency: 902300000,
+			LoRaSNR:   7,
+			Mac:       gwMac,
+			RfChain:   1,
+			Rssi:      -57,
+			Size:      23,
+			Time:      time.Now().Format(time.RFC3339),
+			Timestamp: int32(time.Now().UnixNano() / 1000000000),
+		}
+
+		//Now send an uplink
+		err = device.Uplink(client, lorawan.UnconfirmedDataUp, 1, rxInfo, payload)
+		if err != nil {
+			fmt.Printf("couldn't send uplink: %s\n", err)
+		}
+
+		time.Sleep(3 * time.Second)
+
 	}
 
 }

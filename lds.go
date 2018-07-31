@@ -24,7 +24,7 @@ type RxInfo struct {
 	CrcStatus int       `json:"crcStatus"`
 	DataRate  *DataRate `json:"dataRate"`
 	Frequency int       `json:"frequency"`
-	LoRaSNR   int       `json:"loRaSNR"`
+	LoRaSNR   float32   `json:"loRaSNR"`
 	Mac       string    `json:"mac"`
 	RfChain   int       `json:"rfChain"`
 	Rssi      int       `json:"rssi"`
