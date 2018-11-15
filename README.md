@@ -9,3 +9,7 @@ It's a work in progress, so now it only allows for LoRaWAN 1.0.X specification m
 
 You can check the examples folder for an example of an Uplink message. More will be added as new features are implemented.
 
+## GUI
+
+An experimental GUI is being developed (it does nothing right now) for ease of use.
+
