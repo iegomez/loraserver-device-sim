@@ -16,7 +16,7 @@ func main() {
 	//Connect to the broker
 	opts := MQTT.NewClientOptions()
 	opts.AddBroker("tcp://localhost:1883")
-	opts.SetUsername("your-username")
+	opts.SetUsername("your-user")
 	opts.SetPassword("your-password")
 
 	client := MQTT.NewClient(opts)
@@ -48,8 +48,8 @@ func main() {
 	}
 
 	appKey := [16]byte{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
-	appEUI := [8]byte{0, 0, 0, 0, 0, 0, 0, 2}
-	devEUI := [8]byte{0, 0, 0, 0, 0, 0, 0, 2}
+	appEUI := [8]byte{0, 0, 0, 0, 0, 0, 0, 0}
+	devEUI := [8]byte{0, 0, 0, 0, 0, 0, 0, 0}
 
 	device := &lds.Device{
 		DevEUI:  devEUI,
