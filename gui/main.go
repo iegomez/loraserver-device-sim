@@ -83,6 +83,8 @@ type SendableValue struct {
 	numBytes *ui.Entry
 	isFloat  *ui.Checkbox
 	index    int
+	del      *ui.Button
+	name     string
 }
 
 var confFile string
@@ -296,6 +298,8 @@ func makeDataForm() ui.Control {
 	dataForm := ui.NewForm()
 	dataForm.SetPadded(true)
 
+	name := ui.NewEntry()
+
 	button := ui.NewButton("Add value")
 	entry := ui.NewEntry()
 	entry.SetReadOnly(true)
@@ -306,28 +310,51 @@ func makeDataForm() ui.Control {
 			numBytes: ui.NewEntry(),
 			isFloat:  ui.NewCheckbox("Float"),
 			index:    len(data),
+			del:      ui.NewButton("Delete"),
+			name:     name.Text(),
 		}
 		data = append(data, v)
-		dataForm.Append(fmt.Sprintf("Param %d value", v.index), v.value, false)
-		dataForm.Append(fmt.Sprintf("Param %d max value", v.index), v.maxVal, false)
-		dataForm.Append(fmt.Sprintf("Param %d num bytes", v.index), v.numBytes, false)
-		dataForm.Append(fmt.Sprintf("Param %d is float", v.index), v.isFloat, false)
+		dataForm.Append(fmt.Sprintf("%s value", v.name), v.value, false)
+		dataForm.Append(fmt.Sprintf("%s max value", v.name), v.maxVal, false)
+		dataForm.Append(fmt.Sprintf("%s num bytes", v.name), v.numBytes, false)
+		dataForm.Append(fmt.Sprintf("%s is float", v.name), v.isFloat, false)
+		dataForm.Append("Delete", v.del, false)
+		v.del.OnClicked(func(*ui.Button) {
+			if len(data) == 1 {
+				data = make([]SendableValue, 0)
+			} else {
+				copy(data[v.index:], data[v.index+1:])
+				data[len(data)-1] = SendableValue{}
+				data = data[:len(data)-1]
+			}
+			for i := 4; i >= 0; i-- {
+				dataForm.Delete(5*v.index + i)
+			}
+		})
+		name.SetText("")
 	})
 
 	runBtn := ui.NewButton("Run")
 	entry2 := ui.NewEntry()
 	entry2.SetReadOnly(true)
-	runBtn.OnClicked(func(*ui.Button) {
-		go run()
-	})
 
 	stopBtn := ui.NewButton("Stop")
 	entry3 := ui.NewEntry()
 	entry3.SetReadOnly(true)
+
+	runBtn.OnClicked(func(*ui.Button) {
+		stopBtn.Enable()
+		runBtn.Disable()
+		go run()
+	})
+
 	stopBtn.OnClicked(func(*ui.Button) {
+		stopBtn.Disable()
+		runBtn.Enable()
 		stop = true
 	})
 
+	hbox.Append(name, false)
 	hbox.Append(button, false)
 	hbox.Append(runBtn, false)
 	hbox.Append(stopBtn, false)
@@ -500,6 +527,8 @@ func run() {
 				payload = append(payload, arr...)
 			}
 		}
+
+		fmt.Printf("Bytes: %v\n", payload)
 
 		//Construct DataRate RxInfo with proper values according to your band (example is for US 915).
 
