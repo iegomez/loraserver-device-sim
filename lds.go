@@ -170,6 +170,16 @@ func HexToKey(hexKey string) ([16]byte, error) {
 	return key, nil
 }
 
+//HexToEUI converts a string hex representation of a devEUI to a lorawan.EUI.
+func HexToEUI(hexEUI string) (lorawan.EUI64, error) {
+	var eui lorawan.EUI64
+	if err := eui.UnmarshalText([]byte(hexEUI)); err != nil {
+		fmt.Errorf("wron eui: %s\n", err)
+		return eui, err
+	}
+	return eui, nil
+}
+
 func testMIC(appKey [16]byte, appEUI, devEUI [8]byte) error {
 	joinPhy := lorawan.PHYPayload{
 		MHDR: lorawan.MHDR{
@@ -273,5 +283,42 @@ func generateLng(l float32) []byte {
 	lng := uint32((l / 180.0) * float32(math.Pow(2, 31)))
 	bRep := make([]byte, 4)
 	binary.BigEndian.PutUint32(bRep, lng)
+	return bRep
+}
+
+func GenerateFloat(originalFloat, maxValue float32, numBytes int32) []byte {
+	byteArray := make([]byte, numBytes)
+	if numBytes == 4 {
+		encodedFloat := uint32((originalFloat / maxValue) * float32(math.Pow(2, 31)))
+		binary.BigEndian.PutUint32(byteArray, encodedFloat)
+	} else if numBytes == 3 {
+		encodedFloat := uint32((originalFloat / maxValue) * float32(math.Pow(2, 23)))
+		temp := make([]byte, 4)
+		binary.BigEndian.PutUint32(temp, encodedFloat)
+		byteArray = temp[1:]
+	} else if numBytes == 2 {
+		encodedFloat := uint16((originalFloat / maxValue) * float32(math.Pow(2, 15)))
+		binary.BigEndian.PutUint16(byteArray, encodedFloat)
+	} else if numBytes == 1 {
+		byteArray[0] = uint8(originalFloat)
+	}
+	return byteArray
+}
+
+func GenerateInt(originalInt, numBytes int32) []byte {
+
+	bRep := make([]byte, numBytes)
+	if numBytes == 4 {
+		binary.BigEndian.PutUint32(bRep, uint32(originalInt))
+	} else if numBytes == 3 {
+		temp := make([]byte, 4)
+		binary.BigEndian.PutUint32(temp, uint32(originalInt))
+		bRep = temp[1:]
+	} else if numBytes == 2 {
+		binary.BigEndian.PutUint16(bRep, uint16(originalInt))
+	} else if numBytes == 1 {
+		bRep[0] = uint8(originalInt)
+	}
+
 	return bRep
 }
