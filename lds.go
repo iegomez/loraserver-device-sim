@@ -6,11 +6,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/brocaar/loraserver/api/gw"
 	"github.com/brocaar/lorawan"
@@ -61,8 +61,9 @@ type Device struct {
 	unmarshal func(b []byte, msg proto.Message) error
 }
 
-func (d *Device) SetMarshaler(marshaler string) {
-	switch marshaler {
+func (d *Device) SetMarshaler(opt string) {
+	log.Printf("switching to marshaler: %s\n", opt)
+	switch opt {
 	case "json":
 		d.marshal = func(msg proto.Message) ([]byte, error) {
 			marshaler := &jsonpb.Marshaler{
@@ -89,7 +90,14 @@ func (d *Device) SetMarshaler(marshaler string) {
 			return proto.Unmarshal(b, msg)
 		}
 	default:
-		log.Errorf("unknown marshaler")
+		//Plain old json.
+		d.marshal = func(msg proto.Message) ([]byte, error) {
+			return json.Marshal(msg)
+		}
+
+		d.unmarshal = func(b []byte, msg proto.Message) error {
+			return json.Unmarshal(b, msg)
+		}
 	}
 }
 
@@ -152,17 +160,17 @@ func (d *Device) Uplink(client MQTT.Client, mType lorawan.MType, fPort uint8, rx
 		},
 	}
 
-	if err := phy.SetUplinkDataMIC(lorawan.LoRaWAN1_0, 0, 0, 0, d.NwkSKey, d.AppSKey); err != nil {
-		fmt.Printf("set uplink mic error: %s", err)
-		return err
-	}
-
 	if err := phy.EncryptFRMPayload(d.AppSKey); err != nil {
 		fmt.Printf("encrypt frm payload: %s", err)
 		return err
 	}
 
-	phyBytes, err := phy.MarshalText()
+	if err := phy.SetUplinkDataMIC(lorawan.LoRaWAN1_0, 0, 0, 0, d.NwkSKey, d.NwkSKey); err != nil {
+		fmt.Printf("set uplink mic error: %s", err)
+		return err
+	}
+
+	phyBytes, err := phy.MarshalBinary()
 	if err != nil {
 		if err != nil {
 			fmt.Printf("marshal binary error: %s", err)
@@ -176,9 +184,14 @@ func (d *Device) Uplink(client MQTT.Client, mType lorawan.MType, fPort uint8, rx
 		TxInfo:     txInfo,
 	}
 
-	bytes, err := d.marshal(&message)
+	fmt.Printf("Message PHY payload: %v\n", string(message.PhyPayload))
 
-	fmt.Printf("Publish %v\n", message)
+	bytes, err := d.marshal(&message)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Marshaled message: %v\n", string(bytes))
 
 	if token := client.Publish("gateway/"+gwMAC+"/rx", 0, false, bytes); token.Wait() && token.Error() != nil {
 		fmt.Println(token.Error())
@@ -188,9 +201,9 @@ func (d *Device) Uplink(client MQTT.Client, mType lorawan.MType, fPort uint8, rx
 	//pErr := publish(client, "gateway/"+rxInfo.Mac+"/rx", bytes)
 
 	//Increase uplink fcnt if unconfirmed
-	if mType == lorawan.UnconfirmedDataUp {
+	/*if mType == lorawan.UnconfirmedDataUp {
 		d.UlFcnt++
-	}
+	}*/
 
 	return nil
 
