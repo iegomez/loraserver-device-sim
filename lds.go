@@ -1,12 +1,18 @@
 package lds
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math"
 
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
+	log "github.com/sirupsen/logrus"
+
+	"github.com/brocaar/loraserver/api/gw"
 	"github.com/brocaar/lorawan"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 )
@@ -43,14 +49,48 @@ type DataRate struct {
 
 //Device holds device keys, addr, eui and fcnt.
 type Device struct {
-	DevEUI  lorawan.EUI64
-	DevAddr lorawan.DevAddr
-	NwkSKey lorawan.AES128Key
-	AppSKey lorawan.AES128Key
-	AppKey  [16]byte
-	AppEUI  lorawan.EUI64
-	UlFcnt  uint32
-	DlFcnt  uint32
+	DevEUI    lorawan.EUI64
+	DevAddr   lorawan.DevAddr
+	NwkSKey   lorawan.AES128Key
+	AppSKey   lorawan.AES128Key
+	AppKey    [16]byte
+	AppEUI    lorawan.EUI64
+	UlFcnt    uint32
+	DlFcnt    uint32
+	marshal   func(msg proto.Message) ([]byte, error)
+	unmarshal func(b []byte, msg proto.Message) error
+}
+
+func (d *Device) SetMarshaler(marshaler string) {
+	switch marshaler {
+	case "json":
+		d.marshal = func(msg proto.Message) ([]byte, error) {
+			marshaler := &jsonpb.Marshaler{
+				EnumsAsInts:  false,
+				EmitDefaults: true,
+			}
+			str, err := marshaler.MarshalToString(msg)
+			return []byte(str), err
+		}
+
+		d.unmarshal = func(b []byte, msg proto.Message) error {
+			unmarshaler := &jsonpb.Unmarshaler{
+				AllowUnknownFields: true, // we don't want to fail on unknown fields
+			}
+			return unmarshaler.Unmarshal(bytes.NewReader(b), msg)
+		}
+
+	case "protobuf":
+		d.marshal = func(msg proto.Message) ([]byte, error) {
+			return proto.Marshal(msg)
+		}
+
+		d.unmarshal = func(b []byte, msg proto.Message) error {
+			return proto.Unmarshal(b, msg)
+		}
+	default:
+		log.Errorf("unknown marshaler")
+	}
 }
 
 //Join sends a join request for a given device (OTAA) and rxInfo.
@@ -89,7 +129,7 @@ func (d *Device) Join(client MQTT.Client, gwMac string, rxInfo RxInfo) error {
 }
 
 //Uplink sends an uplink message for a given device, mType (UnconfirmedDataUp, ConfirmedDataUp), rxInfo and payload (unencrypted).
-func (d *Device) Uplink(client MQTT.Client, mType lorawan.MType, fPort uint8, rxInfo *RxInfo, payload []byte) error {
+func (d *Device) Uplink(client MQTT.Client, mType lorawan.MType, fPort uint8, rxInfo *gw.UplinkRXInfo, txInfo *gw.UplinkTXInfo, payload []byte, gwMAC string) error {
 
 	phy := lorawan.PHYPayload{
 		MHDR: lorawan.MHDR{
@@ -122,25 +162,37 @@ func (d *Device) Uplink(client MQTT.Client, mType lorawan.MType, fPort uint8, rx
 		return err
 	}
 
-	upDataStr, err := phy.MarshalText()
+	phyBytes, err := phy.MarshalText()
 	if err != nil {
-		fmt.Printf("marshal up data error: %s", err)
-		return err
+		if err != nil {
+			fmt.Printf("marshal binary error: %s", err)
+			return err
+		}
 	}
 
-	message := &Message{
-		PhyPayload: string(upDataStr),
+	message := gw.UplinkFrame{
+		PhyPayload: phyBytes,
 		RxInfo:     rxInfo,
+		TxInfo:     txInfo,
 	}
 
-	pErr := publish(client, "gateway/"+rxInfo.Mac+"/rx", message)
+	bytes, err := d.marshal(&message)
+
+	fmt.Printf("Publish %v\n", message)
+
+	if token := client.Publish("gateway/"+gwMAC+"/rx", 0, false, bytes); token.Wait() && token.Error() != nil {
+		fmt.Println(token.Error())
+		return token.Error()
+	}
+
+	//pErr := publish(client, "gateway/"+rxInfo.Mac+"/rx", bytes)
 
 	//Increase uplink fcnt if unconfirmed
-	if pErr != nil && mType == lorawan.UnconfirmedDataUp {
+	if mType == lorawan.UnconfirmedDataUp {
 		d.UlFcnt++
 	}
 
-	return pErr
+	return nil
 
 }
 
@@ -178,6 +230,15 @@ func HexToEUI(hexEUI string) (lorawan.EUI64, error) {
 		return eui, err
 	}
 	return eui, nil
+}
+
+//MACToGatewayID converts a string mac to a gateway id byte slice.
+func MACToGatewayID(mac string) ([]byte, error) {
+	bytes, err := hex.DecodeString(mac)
+	if err != nil {
+		return bytes, err
+	}
+	return bytes, nil
 }
 
 func testMIC(appKey [16]byte, appEUI, devEUI [8]byte) error {
