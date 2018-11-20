@@ -152,13 +152,13 @@ func (d *Device) Uplink(client MQTT.Client, mType lorawan.MType, fPort uint8, rx
 		},
 	}
 
-	if err := phy.EncryptFRMPayload(d.AppSKey); err != nil {
-		fmt.Printf("encrypt frm payload: %s", err)
+	if err := phy.SetUplinkDataMIC(lorawan.LoRaWAN1_0, 0, 0, 0, d.NwkSKey, d.AppSKey); err != nil {
+		fmt.Printf("set uplink mic error: %s", err)
 		return err
 	}
 
-	if err := phy.SetUplinkDataMIC(lorawan.LoRaWAN1_0, 0, 0, 0, d.NwkSKey, d.AppSKey); err != nil {
-		fmt.Printf("set uplink mic error: %s", err)
+	if err := phy.EncryptFRMPayload(d.AppSKey); err != nil {
+		fmt.Printf("encrypt frm payload: %s", err)
 		return err
 	}
 
